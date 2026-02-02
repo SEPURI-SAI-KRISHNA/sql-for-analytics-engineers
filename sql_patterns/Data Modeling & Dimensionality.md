@@ -85,3 +85,51 @@ LEFT JOIN campaigns c
 
 ---
 
+### 9. Handling "Late Arriving Dimensions"
+
+**Problem Statement:** In real-time data ingestion, a fact record (e.g., `page_view`) might arrive *before* the corresponding dimension record (e.g., the `user_id` entry in the `users` table) due to lag. A standard `INNER JOIN` would drop this data, causing under-reporting.
+
+**Optimized SQL (Ghost Records):**
+
+```sql
+SELECT 
+    f.page_view_id,
+    f.viewed_at,
+    f.user_id,
+    -- If the user doesn't exist yet, provide fallback values
+    COALESCE(u.user_name, 'Unknown') as user_name,
+    COALESCE(u.country, 'Pending') as country
+FROM page_views f
+LEFT JOIN users u ON f.user_id = u.user_id
+WHERE f.viewed_at >= CURRENT_DATE - INTERVAL '1 day';
+
+```
+
+**Alternative (The "Union" Inference Pattern):**
+If you need to actually *insert* missing dimensions for downstream tools:
+
+```sql
+WITH all_keys AS (
+    SELECT DISTINCT user_id FROM page_views
+    UNION
+    SELECT user_id FROM users
+)
+SELECT 
+    k.user_id,
+    COALESCE(u.user_name, 'Inferred Member') as user_name
+FROM all_keys k
+LEFT JOIN users u ON k.user_id = u.user_id;
+
+```
+
+**Explanation:**
+
+* **Defensive Coding:** Always prefer `LEFT JOIN` over `INNER JOIN` in production reporting pipelines unless you are certain referential integrity is enforced by the database (which is rare in Data Warehouses like Snowflake/BigQuery).
+* **Ghost Records:** Some engineers explicitly insert a dummy row into the `users` table with ID `-1` or `0` and join missing keys to that ID to keep the join logic clean.
+
+**Performance Considerations:**
+
+* `COALESCE` is very cheap.
+* The `UNION` approach is expensive and should only be done during the ETL modeling phase (e.g., in dbt), not in ad-hoc queries.
+
+---
