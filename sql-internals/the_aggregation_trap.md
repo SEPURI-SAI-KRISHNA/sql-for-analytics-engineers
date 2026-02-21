@@ -1,4 +1,4 @@
-Great. Let's move to **Level 2: The Aggregation Trap**.
+**The Aggregation Trap**.
 
 This is where 90% of candidates fail because they assume SQL math works like Excel math. It does not.
 
@@ -143,9 +143,3 @@ HAVING COUNT(*) > 1;
 
 ---
 
-### **Grandmaster Checkpoint**
-
-You have just learned the two biggest reasons people fail SQL interviews:
-
-1. **Three-Valued Logic** (NULL is not False).
-2. **Aggregation Ignorance** (AVG ignores NULLs).
